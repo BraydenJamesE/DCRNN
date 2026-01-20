@@ -11,15 +11,15 @@ def masked_mse_tf(preds, labels, null_val=np.nan):
     :return:
     """
     if np.isnan(null_val):
-        mask = ~tf.is_nan(labels)
+        mask = ~tf.compat.v1.is_nan(labels)
     else:
         mask = tf.not_equal(labels, null_val)
     mask = tf.cast(mask, tf.float32)
     mask /= tf.reduce_mean(mask)
-    mask = tf.where(tf.is_nan(mask), tf.zeros_like(mask), mask)
+    mask = tf.where(tf.compat.v1.is_nan(mask), tf.zeros_like(mask), mask)
     loss = tf.square(tf.subtract(preds, labels))
     loss = loss * mask
-    loss = tf.where(tf.is_nan(loss), tf.zeros_like(loss), loss)
+    loss = tf.where(tf.compat.v1.is_nan(loss), tf.zeros_like(loss), loss)
     return tf.reduce_mean(loss)
 
 
@@ -32,15 +32,15 @@ def masked_mae_tf(preds, labels, null_val=np.nan):
     :return:
     """
     if np.isnan(null_val):
-        mask = ~tf.is_nan(labels)
+        mask = ~tf.compat.v1.is_nan(labels)
     else:
         mask = tf.not_equal(labels, null_val)
     mask = tf.cast(mask, tf.float32)
     mask /= tf.reduce_mean(mask)
-    mask = tf.where(tf.is_nan(mask), tf.zeros_like(mask), mask)
+    mask = tf.where(tf.compat.v1.is_nan(mask), tf.zeros_like(mask), mask)
     loss = tf.abs(tf.subtract(preds, labels))
     loss = loss * mask
-    loss = tf.where(tf.is_nan(loss), tf.zeros_like(loss), loss)
+    loss = tf.where(tf.compat.v1.is_nan(loss), tf.zeros_like(loss), loss)
     return tf.reduce_mean(loss)
 
 

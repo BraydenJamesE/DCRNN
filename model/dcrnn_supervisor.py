@@ -32,7 +32,7 @@ class DCRNNSupervisor(object):
         self._log_dir = self._get_log_dir(kwargs)
         log_level = self._kwargs.get('log_level', 'INFO')
         self._logger = utils.get_logger(self._log_dir, __name__, 'info.log', level=log_level)
-        self._writer = tf.summary.FileWriter(self._log_dir)
+        self._writer = tf.compat.v1.summary.FileWriter(self._log_dir)
         self._logger.info(kwargs)
 
         # Data preparation
@@ -44,29 +44,29 @@ class DCRNNSupervisor(object):
         # Build models.
         scaler = self._data['scaler']
         with tf.name_scope('Train'):
-            with tf.variable_scope('DCRNN', reuse=False):
+            with tf.compat.v1.variable_scope('DCRNN', reuse=False):
                 self._train_model = DCRNNModel(is_training=True, scaler=scaler,
                                                batch_size=self._data_kwargs['batch_size'],
                                                adj_mx=adj_mx, **self._model_kwargs)
 
         with tf.name_scope('Test'):
-            with tf.variable_scope('DCRNN', reuse=True):
+            with tf.compat.v1.variable_scope('DCRNN', reuse=True):
                 self._test_model = DCRNNModel(is_training=False, scaler=scaler,
                                               batch_size=self._data_kwargs['test_batch_size'],
                                               adj_mx=adj_mx, **self._model_kwargs)
 
         # Learning rate.
-        self._lr = tf.get_variable('learning_rate', shape=(), initializer=tf.constant_initializer(0.01),
+        self._lr = tf.compat.v1.get_variable('learning_rate', shape=(), initializer=tf.constant_initializer(0.01),
                                    trainable=False)
-        self._new_lr = tf.placeholder(tf.float32, shape=(), name='new_learning_rate')
-        self._lr_update = tf.assign(self._lr, self._new_lr, name='lr_update')
+        self._new_lr = tf.compat.v1.placeholder(tf.float32, shape=(), name='new_learning_rate')
+        self._lr_update = tf.compat.v1.assign(self._lr, self._new_lr, name='lr_update')
 
         # Configure optimizer
         optimizer_name = self._train_kwargs.get('optimizer', 'adam').lower()
         epsilon = float(self._train_kwargs.get('epsilon', 1e-3))
-        optimizer = tf.train.AdamOptimizer(self._lr, epsilon=epsilon)
+        optimizer = tf.compat.v1.train.AdamOptimizer(self._lr, epsilon=epsilon)
         if optimizer_name == 'sgd':
-            optimizer = tf.train.GradientDescentOptimizer(self._lr, )
+            optimizer = tf.compat.v1.train.GradientDescentOptimizer(self._lr, )
         elif optimizer_name == 'amsgrad':
             optimizer = AMSGrad(self._lr, epsilon=epsilon)
 
@@ -79,21 +79,21 @@ class DCRNNSupervisor(object):
         self._loss_fn = masked_mae_loss(scaler, null_val)
         self._train_loss = self._loss_fn(preds=preds, labels=labels)
 
-        tvars = tf.trainable_variables()
+        tvars = tf.compat.v1.trainable_variables()
         grads = tf.gradients(self._train_loss, tvars)
         max_grad_norm = kwargs['train'].get('max_grad_norm', 1.)
         grads, _ = tf.clip_by_global_norm(grads, max_grad_norm)
-        global_step = tf.train.get_or_create_global_step()
+        global_step = tf.compat.v1.train.get_or_create_global_step()
         self._train_op = optimizer.apply_gradients(zip(grads, tvars), global_step=global_step, name='train_op')
 
         max_to_keep = self._train_kwargs.get('max_to_keep', 100)
         self._epoch = 0
-        self._saver = tf.train.Saver(tf.global_variables(), max_to_keep=max_to_keep)
+        self._saver = tf.compat.v1.train.Saver(tf.compat.v1.global_variables(), max_to_keep=max_to_keep)
 
         # Log model statistics.
         total_trainable_parameter = utils.get_total_trainable_parameter_size()
         self._logger.info('Total number of trainable parameters: {:d}'.format(total_trainable_parameter))
-        for var in tf.global_variables():
+        for var in tf.compat.v1.global_variables():
             self._logger.debug('{}, {}'.format(var.name, var.get_shape()))
 
     @staticmethod
@@ -135,12 +135,13 @@ class DCRNNSupervisor(object):
         fetches = {
             'loss': loss,
             'mae': loss,
-            'global_step': tf.train.get_or_create_global_step()
+            'global_step': tf.compat.v1.train.get_or_create_global_step()
         }
         if training:
             fetches.update({
                 'train_op': self._train_op
             })
+
             merged = model.merged
             if merged is not None:
                 fetches.update({'merged': merged})
@@ -155,7 +156,6 @@ class DCRNNSupervisor(object):
                 model.inputs: x,
                 model.labels: y,
             }
-
             vals = sess.run(fetches, feed_dict=feed_dict)
 
             losses.append(vals['loss'])
@@ -174,7 +174,7 @@ class DCRNNSupervisor(object):
         return results
 
     def get_lr(self, sess):
-        return np.asscalar(sess.run(self._lr))
+        return np.ndarray.item(sess.run(self._lr))
 
     def set_lr(self, sess, lr):
         sess.run(self._lr_update, feed_dict={
@@ -188,18 +188,20 @@ class DCRNNSupervisor(object):
     def _train(self, sess, base_lr, epoch, steps, patience=50, epochs=100,
                min_learning_rate=2e-6, lr_decay_ratio=0.1, save_model=1,
                test_every_n_epochs=10, **train_kwargs):
+        
+        epochs = 1
         history = []
         min_val_loss = float('inf')
         wait = 0
 
         max_to_keep = train_kwargs.get('max_to_keep', 100)
-        saver = tf.train.Saver(tf.global_variables(), max_to_keep=max_to_keep)
+        saver = tf.compat.v1.train.Saver(tf.compat.v1.global_variables(), max_to_keep=max_to_keep)
         model_filename = train_kwargs.get('model_filename')
         if model_filename is not None:
             saver.restore(sess, model_filename)
             self._epoch = epoch + 1
         else:
-            sess.run(tf.global_variables_initializer())
+            sess.run(tf.compat.v1.global_variables_initializer())
         self._logger.info('Start training ...')
 
         while self._epoch <= epochs:
@@ -217,12 +219,12 @@ class DCRNNSupervisor(object):
                 self._logger.warning('Gradient explosion detected. Ending...')
                 break
 
-            global_step = sess.run(tf.train.get_or_create_global_step())
+            global_step = sess.run(tf.compat.v1.train.get_or_create_global_step())
             # Compute validation error.
             val_results = self.run_epoch_generator(sess, self._test_model,
                                                    self._data['val_loader'].get_iterator(),
                                                    training=False)
-            val_loss, val_mae = np.asscalar(val_results['loss']), np.asscalar(val_results['mae'])
+            val_loss, val_mae = float(val_results['loss']), float(val_results['mae'])
 
             utils.add_simple_summary(self._writer,
                                      ['loss/train_loss', 'metric/train_mae', 'loss/val_loss', 'metric/val_mae'],
@@ -249,12 +251,13 @@ class DCRNNSupervisor(object):
             history.append(val_mae)
             # Increases epoch.
             self._epoch += 1
+            print("EPOCH: ", self._epoch)
 
             sys.stdout.flush()
         return np.min(history)
 
     def evaluate(self, sess, **kwargs):
-        global_step = sess.run(tf.train.get_or_create_global_step())
+        global_step = sess.run(tf.compat.v1.train.get_or_create_global_step())
         test_results = self.run_epoch_generator(sess, self._test_model,
                                                 self._data['test_loader'].get_iterator(),
                                                 return_output=True,
@@ -305,7 +308,7 @@ class DCRNNSupervisor(object):
 
     def save(self, sess, val_loss):
         config = dict(self._kwargs)
-        global_step = np.asscalar(sess.run(tf.train.get_or_create_global_step()))
+        global_step = int(sess.run(tf.compat.v1.train.get_or_create_global_step()))
         prefix = os.path.join(self._log_dir, 'models-{:.4f}'.format(val_loss))
         config['train']['epoch'] = self._epoch
         config['train']['global_step'] = global_step

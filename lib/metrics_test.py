@@ -130,7 +130,7 @@ class MyTestCase(unittest.TestCase):
 
 class TFRMSETestCase(unittest.TestCase):
     def test_masked_mse_null(self):
-        with tf.Session() as sess:
+        with tf.compat.v1.Session() as sess:
             preds = tf.constant(np.array([
                 [1, 2],
                 [3, 4],
@@ -143,7 +143,7 @@ class TFRMSETestCase(unittest.TestCase):
             self.assertAlmostEqual(1 / 3.0, sess.run(rmse), delta=1e-5)
 
     def test_masked_mse_vanilla(self):
-        with tf.Session() as sess:
+        with tf.compat.v1.Session() as sess:
             preds = tf.constant(np.array([
                 [1, 2],
                 [3, 4],
@@ -156,7 +156,7 @@ class TFRMSETestCase(unittest.TestCase):
             self.assertAlmostEqual(1.25, sess.run(rmse), delta=1e-5)
 
     def test_masked_mse_all_zero(self):
-        with tf.Session() as sess:
+        with tf.compat.v1.Session() as sess:
             preds = tf.constant(np.array([
                 [1, 2],
                 [3, 4],
@@ -169,7 +169,7 @@ class TFRMSETestCase(unittest.TestCase):
             self.assertAlmostEqual(0., sess.run(rmse), delta=1e-5)
 
     def test_masked_mse_nan(self):
-        with tf.Session() as sess:
+        with tf.compat.v1.Session() as sess:
             preds = tf.constant(np.array([
                 [1, 2],
                 [3, 4],
@@ -182,7 +182,7 @@ class TFRMSETestCase(unittest.TestCase):
             self.assertAlmostEqual(0., sess.run(rmse), delta=1e-5)
 
     def test_masked_mse_all_nan(self):
-        with tf.Session() as sess:
+        with tf.compat.v1.Session() as sess:
             preds = tf.constant(np.array([
                 [1, 2],
                 [3, 4],

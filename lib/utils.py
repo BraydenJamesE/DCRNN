@@ -75,7 +75,7 @@ def add_simple_summary(writer, names, values, global_step):
     :return:
     """
     for name, value in zip(names, values):
-        summary = tf.Summary()
+        summary = tf.compat.v1.Summary()
         summary_value = summary.value.add()
         summary_value.simple_value = value
         summary_value.tag = name
@@ -169,9 +169,9 @@ def get_total_trainable_parameter_size():
     :return:
     """
     total_parameters = 0
-    for variable in tf.trainable_variables():
+    for variable in tf.compat.v1.trainable_variables():
         # shape is an array of tf.Dimension
-        total_parameters += np.product([x.value for x in variable.get_shape()])
+        total_parameters += np.product([x for x in variable.get_shape()])
     return total_parameters
 
 

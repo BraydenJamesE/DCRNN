@@ -12,18 +12,17 @@ from model.dcrnn_supervisor import DCRNNSupervisor
 
 def main(args):
     with open(args.config_filename) as f:
-        supervisor_config = yaml.load(f)
+        supervisor_config = yaml.safe_load(f)
 
         graph_pkl_filename = supervisor_config['data'].get('graph_pkl_filename')
         sensor_ids, sensor_id_to_ind, adj_mx = load_graph_data(graph_pkl_filename)
 
-        tf_config = tf.ConfigProto()
+        tf_config = tf.compat.v1.ConfigProto()
         if args.use_cpu_only:
-            tf_config = tf.ConfigProto(device_count={'GPU': 0})
+            tf_config = tf.compat.v1.roto(device_count={'GPU': 0})
         tf_config.gpu_options.allow_growth = True
-        with tf.Session(config=tf_config) as sess:
+        with tf.compat.v1.Session(config=tf_config) as sess:
             supervisor = DCRNNSupervisor(adj_mx=adj_mx, **supervisor_config)
-
             supervisor.train(sess=sess)
 
 
